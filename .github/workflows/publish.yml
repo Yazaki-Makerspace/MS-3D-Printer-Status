@@ -37,13 +37,15 @@ jobs:
         run: |
           mkdir -p _site
           cp -R site/. _site/
+          # the live status.json carries ok_at (last healthy update) forward for the alert flow
+          curl -fsSL "$PAGES_URL?_=$(date +%s)" -o last.json || echo '{"printers":[]}' > last.json
           if [ "$EVENT" = "repository_dispatch" ]; then
-            printf '%s' "$STATUS" | python3 tools/clean_status.py > _site/status.json
+            printf '%s' "$STATUS" | python3 tools/clean_status.py last.json > _site/status.json
           else
-            curl -fsSL "$PAGES_URL?_=$(date +%s)" -o last.json || echo '{"printers":[]}' > last.json
-            python3 tools/clean_status.py < last.json > _site/status.json
+            python3 tools/clean_status.py last.json < last.json > _site/status.json
           fi
-          python3 -c "import json; d=json.load(open('_site/status.json')); print(len(d['printers']), 'printers, updated', d.get('updated'))"
+          python3 tools/make_feed.py _site/status.json > _site/status.rss
+          python3 -c "import json; d=json.load(open('_site/status.json')); print(len(d['printers']), 'printers, updated', d.get('updated'), 'ok_at', d.get('ok_at'))"
 
       - uses: actions/configure-pages@v5
 

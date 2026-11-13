@@ -62,10 +62,33 @@ def clean(d):
     return out
 
 
+def healthy(out):
+    """Live data with at least one printer that answered (not offline or unknown)."""
+    return not out.get("demo") and any(p["state"] not in ("offline", "unknown") for p in out["printers"])
+
+
+def add_ok_at(out, prev):
+    """ok_at = the last time the feed was healthy, carried forward from the previous status.json.
+    The alert flow emails staff when it gets too old (README: Alert)."""
+    before = iso(prev.get("ok_at")) if isinstance(prev, dict) else None
+    out["ok_at"] = out["updated"] if healthy(out) else (before or out["updated"])
+    return out
+
+
+def load(path):
+    try:
+        with open(path) as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return {}
+
+
 if __name__ == "__main__":
+    # stdin: the new status; optional argv[1]: the previous live status.json (for ok_at)
     raw = sys.stdin.read().strip()
     try:
         data = json.loads(raw) if raw and raw != "null" else {}
     except ValueError:
         data = {}
-    print(json.dumps(clean(data), separators=(",", ":")))
+    prev = load(sys.argv[1]) if len(sys.argv) > 1 else {}
+    print(json.dumps(add_ok_at(clean(data), prev), separators=(",", ":")))
