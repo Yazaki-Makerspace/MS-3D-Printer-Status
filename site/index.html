@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>3D Lab Printers</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;700;800;900&family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  /* Yazaki Makerspace Design System: ink, paper, wood + area colors. 3D Lab = green. */
+  @font-face { font-family: "National Park"; font-weight: 700; src: url("fonts/NationalPark-Bold.ttf") format("truetype"); font-display: block; }
+  @font-face { font-family: "National Park"; font-weight: 800; src: url("fonts/NationalPark-ExtraBold.ttf") format("truetype"); font-display: block; }
+  :root {
+    --ink: #0f1f23; --ink-700: #33474c; --ink-500: #6b7b7f; --ink-200: #d8dcd9;
+    --paper: #f8f6f2; --white: #ffffff; --wood: #8a5a2b; --wood-light: #c89b6a;
+    --green: #32664c; --green-soft: #e3ece6; --gold: #d1a13f; --red: #b23e31;
+    --display: "National Park", "Montserrat", "Lato", sans-serif;
+    --body: "Nunito Sans", "Lato", "Noto Sans", sans-serif;
+    --mono: "Courier Prime", "Cousine", "Courier New", monospace;
+    --fit: 1;
+  }
+  /* 1rem = 10px on a 1920x1080 screen; scales with any TV. --fit shrinks it if cards overflow. */
+  html { font-size: calc(min(100vh / 108, 100vw / 192) * var(--fit)); }
+  @media (orientation: portrait) { html { font-size: calc(min(100vh / 192, 100vw / 108) * var(--fit)); } }
+  html, body { margin: 0; height: 100%; background: var(--paper); color: var(--ink); }
+  body { font-family: var(--body); overflow: hidden; -webkit-font-smoothing: antialiased; }
+  * { box-sizing: border-box; }
+
+  .screen { position: fixed; inset: 0; display: grid; grid-template-rows: auto 1fr auto; padding: 2.6rem 4.4rem 2.2rem; gap: 2rem; }
+  .screen::before { /* faint 3D Lab honeycomb */
+    content: ""; position: absolute; inset: 0; z-index: -1; opacity: .05;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='97' viewBox='0 0 56 97'%3E%3Cpath d='M28 1l26 15v30L28 61 2 46V16zM28 61v36M2 46L-24 61M54 46l26 15' fill='none' stroke='%230f1f23' stroke-width='2'/%3E%3C/svg%3E");
+    background-size: 5.6rem 9.7rem;
+  }
+
+  /* ---------- header ---------- */
+  .top { display: flex; align-items: center; gap: 2.2rem; padding-bottom: 1.6rem; border-bottom: .5rem solid var(--green); }
+  .stamp { width: 8.2rem; height: 8.2rem; flex: none; }
+  .titles { flex: 1; min-width: 0; }
+  .eyebrow { font: 700 1.75rem/1 var(--mono); letter-spacing: .22em; text-transform: uppercase; color: var(--ink-700); display: flex; align-items: center; gap: 1.2rem; }
+  .eyebrow .dot { width: 1.5rem; height: 1.5rem; border-radius: 50%; background: var(--green); border: .25rem solid var(--ink); flex: none; }
+  .live .eyebrow .dot { animation: pulse 2.4s ease-in-out infinite; }
+  @keyframes pulse { 50% { transform: scale(.7); opacity: .55; } }
+  h1 { margin: .9rem 0 0; font: 800 5.6rem/0.95 var(--display); letter-spacing: .03em; text-transform: uppercase; }
+  .counts { display: flex; gap: 1.4rem; align-items: stretch; }
+  .count { display: flex; flex-direction: column; justify-content: center; align-items: center; min-width: 12.5rem; padding: .9rem 1.8rem 1rem; border: .3rem solid var(--ink); border-radius: 1.6rem; background: var(--white); box-shadow: .5rem .5rem 0 var(--ink); }
+  .count b { font: 800 4.6rem/1 var(--display); }
+  .count span { font: 800 1.4rem/1.1 var(--body); text-transform: uppercase; letter-spacing: .12em; margin-top: .5rem; white-space: nowrap; }
+  .count.free { background: var(--green); color: var(--white); }
+  .count.done { background: var(--gold); }
+  .count.attention { background: var(--red); color: var(--white); }
+  .count[hidden] { display: none; }
+  .clock { font: 800 5rem/1 var(--display); text-align: right; min-width: 18rem; white-space: nowrap; }
+  .clock small { font-size: .45em; letter-spacing: .08em; margin-left: .5rem; }
+
+  /* ---------- groups ---------- */
+  main { display: flex; flex-direction: column; gap: 1.8rem; min-height: 0; }
+  .group { display: flex; flex-direction: column; min-height: 0; }
+  .glabel { display: flex; align-items: center; gap: 1.4rem; margin: 0 0 .9rem .2rem; flex: none; }
+  .glabel b { font: 800 2.3rem/1 var(--display); letter-spacing: .12em; text-transform: uppercase; }
+  .glabel span { font: 700 1.7rem/1 var(--mono); color: var(--ink-700); letter-spacing: .06em; }
+  .glabel em { font: 800 1.45rem/1 var(--body); font-style: normal; text-transform: uppercase; letter-spacing: .12em; color: var(--white); background: var(--green); padding: .5rem 1.2rem .45rem; border-radius: 99rem; }
+  .glabel em.none { background: var(--ink-200); color: var(--ink-700); }
+  .cards { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(var(--cols, 6), minmax(0, 1fr)); grid-auto-rows: minmax(0, 1fr); gap: 1.8rem; padding: 0 .6rem .6rem 0; }
+
+  /* ---------- cards ---------- */
+  .card { position: relative; display: flex; flex-direction: column; min-height: 0; overflow: hidden; padding: 1.3rem 1.6rem 1.4rem; background: var(--white); border: .3rem solid var(--ink); border-radius: 1.6rem; box-shadow: .6rem .6rem 0 var(--ink); }
+  .card > * { flex: none; }
+  .card .row1 { display: flex; justify-content: space-between; align-items: center; gap: 1rem; min-height: 2.6rem; }
+  .chip { font: 800 1.35rem/1 var(--body); text-transform: uppercase; letter-spacing: .14em; padding: .55rem 1.1rem .5rem; border-radius: 99rem; border: .22rem solid currentColor; white-space: nowrap; }
+  .model { font: 700 1.5rem/1 var(--mono); letter-spacing: .06em; color: var(--ink-500); white-space: nowrap; }
+  .name { margin-top: .8rem; font: 800 3.1rem/1 var(--display); letter-spacing: .04em; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .big { margin-top: auto; padding-top: .6rem; font: 800 5.6rem/1 var(--display); letter-spacing: .02em; white-space: nowrap; }
+  .big small { font-size: .5em; margin-left: .2rem; }
+  .big.word { font-size: 4.5rem; letter-spacing: .04em; }
+  .say { font: 800 1.9rem/1.15 var(--body); margin-top: .5rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .say2 { font: 700 1.65rem/1.15 var(--body); color: var(--ink-700); margin-top: .3rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bar { margin-top: .8rem; height: 1.4rem; border: .22rem solid var(--ink); border-radius: 99rem; background: var(--white); overflow: hidden; flex: none; }
+  .bar i { display: block; height: 100%; background: var(--green); border-right: .22rem solid var(--ink); }
+  .fil { display: flex; gap: .45rem; align-items: center; }
+  .fil i { width: 1.8rem; height: 1.8rem; border-radius: 50%; border: .22rem solid var(--ink); background: var(--c); flex: none; }
+  .fil i.on { width: 2.2rem; height: 2.2rem; box-shadow: 0 0 0 .25rem var(--white), 0 0 0 .5rem var(--ink); margin: 0 .45rem; }
+  .fil span { font: 700 1.5rem/1 var(--mono); color: var(--ink-700); margin-left: .4rem; }
+
+  .s-printing .chip, .s-preparing .chip { color: var(--green); }
+  .s-preparing .bar i { width: 0 !important; border: 0; }
+  .s-paused .chip, .s-stopped .chip { color: var(--wood); }
+  .s-paused .bar i { background: var(--wood-light); }
+  .s-free { background: var(--green); color: var(--white); }
+  .s-free .chip { color: var(--white); }
+  .s-free .model, .s-free .say2 { color: #cfe0d6; }
+  .s-free .fil i { border-color: var(--ink); }
+  .s-free .fil i.on { box-shadow: 0 0 0 .25rem var(--green), 0 0 0 .5rem var(--white); }
+  .s-free .fil span { color: #cfe0d6; }
+  .s-done { background: var(--gold); }
+  .s-done .chip { color: var(--ink); }
+  .s-done .model, .s-done .say2 { color: var(--ink-700); }
+  .s-attention { background: var(--red); color: var(--white); }
+  .s-attention .chip { color: var(--white); }
+  .s-attention .model, .s-attention .say2 { color: #f3d3cf; }
+  .s-offline, .s-unknown { background: transparent; box-shadow: none; border-style: dashed; border-color: var(--ink-500); color: var(--ink-500); }
+  .s-offline .chip, .s-unknown .chip { color: var(--ink-500); }
+  .s-offline .fil, .s-unknown .fil { opacity: .4; }
+
+  /* ---------- footer ---------- */
+  .foot { display: flex; justify-content: space-between; align-items: center; gap: 3rem; font: 700 1.9rem/1.2 var(--body); color: var(--ink-700); }
+  .foot .note { font-weight: 800; color: var(--ink); text-align: right; }
+  .pill { display: inline-block; font: 800 1.6rem/1 var(--body); text-transform: uppercase; letter-spacing: .12em; padding: .6rem 1.3rem .55rem; border-radius: 99rem; margin-right: 1.2rem; }
+  .pill.demo { background: var(--gold); color: var(--ink); }
+  .pill.paused { background: var(--red); color: var(--white); }
+
+  /* stale: keep the picture but make it clearly not live */
+  body.stale .card, body.stale .count, body.stale .glabel em { filter: grayscale(1); opacity: .45; }
+  body.stale .top { border-bottom-color: var(--ink-200); }
+  body.stale .eyebrow .dot { background: var(--red); animation: none; }
+
+  .empty { display: none; position: absolute; inset: 0; align-items: center; justify-content: center; flex-direction: column; gap: 1.6rem; text-align: center; }
+  .empty b { font: 800 5.6rem/1 var(--display); text-transform: uppercase; letter-spacing: .04em; }
+  .empty span { font: 700 2.4rem/1.3 var(--body); color: var(--ink-700); }
+  body.nodata main { visibility: hidden; }
+  body.nodata .empty { display: flex; }
+  body.nodata .counts { visibility: hidden; }
+
+  /* portrait (kiosk 1080x1920): stack the header, 3 cards a row */
+  @media (orientation: portrait) {
+    .screen { padding: 4rem 3.6rem 3rem; }
+    .top { flex-wrap: wrap; }
+    .counts { order: 3; width: 100%; }
+    .count { flex: 1; min-width: 0; }
+  }
+</style>
+</head>
+<body class="nodata">
+<div class="screen">
+  <header class="top">
+    <img class="stamp" src="makerspace-stamp.png" alt="Yazaki Makerspace">
+    <div class="titles">
+      <div class="eyebrow"><i class="dot"></i><span id="eyebrow">3D Lab · 1403E · Live</span></div>
+      <h1>Printer status</h1>
+    </div>
+    <div class="counts">
+      <div class="count free"><b id="nFree">0</b><span>Free now</span></div>
+      <div class="count printing"><b id="nPrinting">0</b><span>Printing</span></div>
+      <div class="count done" id="cDone" hidden><b id="nDone">0</b><span>Done</span></div>
+      <div class="count attention" id="cAtt" hidden><b id="nAtt">0</b><span>Need a look</span></div>
+    </div>
+    <div class="clock" id="clock"></div>
+  </header>
+  <main id="groups"></main>
+  <footer class="foot">
+    <div id="status">Connecting to the printers…</div>
+    <div class="note" id="note"></div>
+  </footer>
+  <div class="empty"><b id="emptyTitle">Connecting…</b><span id="emptyText">Printer status will show here in a moment.</span></div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var params = new URLSearchParams(location.search);
+  var SRC = params.get("src") || "status.json";
+  var POLL_MS = (Number(params.get("poll")) || 30) * 1000;
+  var DONE_WINDOW_MIN = Number(params.get("done")) || 60;   // a finished print shows DONE this long
+  var GIVE_UP_H = 6;                                          // older than this: hide the cards entirely
+  var LEVELS = ["Fundamentals", "Intermediate", "Advanced"];
+  var DEFAULT_NOTE = "Done printing? Clear the plate for the next maker.";
+
+  var data = null, lastGood = null;
+  try { lastGood = JSON.parse(localStorage.getItem("ms-printers-last") || "null"); } catch (e) {}
+
+  function $(id) { return document.getElementById(id); }
+  function el(tag, cls, text) { var n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; }
+  function natural(a, b) { return a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" }); }
+  function fmtTime(d) { return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }); }
+  function fmtDur(min) {
+    min = Math.max(0, Math.round(min));
+    if (min < 60) return min + " min";
+    var h = Math.floor(min / 60), m = min % 60;
+    return h + " h" + (m ? " " + m + " min" : "");
+  }
+  function ago(ms) { var m = Math.round(ms / 60000); if (m < 1) return "just now"; return fmtDur(m) + " ago"; }
+  function sameDay(a, b) { return a.toDateString() === b.toDateString(); }
+
+  // ---- read either feed: ours, or the original PrintStatus (Hadi Osman) status.json ----
+  var OLD_STATES = { RUNNING: "printing", PAUSE: "paused", FINISH: "done", FAILED: "stopped", IDLE: "free",
+                     PREPARE: "preparing", SLICING: "preparing", INIT: "preparing", OFFLINE: "offline" };
+  function modelFromName(n) { var m = /^(A1[- ]?mini|A1|P1S|P1P|X1E|X1C|X1|H2C|H2D|H2S|P2S)/i.exec(n || ""); return m ? m[1].replace(/-/, " ").replace(/mini/i, "Mini") : ""; }
+  function normalize(d) {
+    if (!d || !Array.isArray(d.printers)) return null;
+    if ("poll_interval" in d || (d.printers[0] && "pct_progress" in d.printers[0])) {
+      var t = d.timestamp ? new Date(d.timestamp) : null;  // "10/11/2026 11:00:43 AM", local time
+      return {
+        updated: t && !isNaN(t) ? t.toISOString() : null,
+        stale_after_s: (d.poll_interval || 600) * 2 + 900, // + GitHub Pages cache
+        source: "PrintStatus",
+        printers: d.printers.map(function (p) {
+          var st = OLD_STATES[String(p.status || "").toUpperCase()] || "unknown";
+          var o = { name: p.printer, group: p.printer_class || modelFromName(p.printer), model: modelFromName(p.printer), state: st };
+          if (st === "printing" || st === "paused") {
+            o.progress = p.pct_progress; o.remaining_min = p.min_remaining;
+            if (p.total_layer_num) { o.layer = p.current_layer_num; o.total_layers = p.total_layer_num; }
+          }
+          return o;
+        })
+      };
+    }
+    return d;
+  }
+
+  // What the card should say, after applying the "done is only news for an hour" rule.
+  function view(p, now) {
+    var s = p.state, since = p.since ? new Date(p.since) : null;
+    var age = since ? now - since : Infinity;
+    var v = { cls: s, chip: "", big: "", word: false, say: "", say2: "", bar: null };
+    if ((s === "done" || s === "stopped") && age > DONE_WINDOW_MIN * 60000) {
+      s = v.cls = "free"; v.afterDone = true;
+    }
+    switch (s) {
+      case "printing":
+        v.chip = "Printing"; v.big = p.progress != null ? p.progress : "—"; v.bar = p.progress || 0;
+        if (p.remaining_min != null) {
+          var eta = new Date(new Date(data.updated).getTime() + p.remaining_min * 60000);
+          v.say = fmtDur(p.remaining_min) + " left";
+          v.say2 = "Done " + (sameDay(eta, now) ? "about " + fmtTime(eta) : eta.toLocaleDateString([], { weekday: "short" }) + " " + fmtTime(eta));
+        }
+        break;
+      case "preparing":
+        v.chip = "Starting"; v.big = p.progress || 0; v.bar = 0; v.say = p.stage || "Getting ready";
+        if (p.remaining_min) v.say2 = "Print takes " + fmtDur(p.remaining_min);
+        break;
+      case "paused":
+        v.chip = "Paused"; v.big = p.progress != null ? p.progress : "—"; v.bar = p.progress || 0;
+        v.say = p.stage || "Paused"; if (p.remaining_min != null) v.say2 = fmtDur(p.remaining_min) + " left after it resumes";
+        break;
+      case "done":
+        v.chip = "Done"; v.big = "Done"; v.word = true; v.say = "Pick it up"; v.say2 = since ? "Finished " + ago(age) : "";
+        break;
+      case "stopped":
+        v.chip = "Stopped"; v.big = "Stopped"; v.word = true; v.say = "Clear the plate"; v.say2 = since ? "Stopped " + ago(age) : "";
+        break;
+      case "attention":
+        v.chip = "Needs a look"; v.big = "Check"; v.word = true; v.say = p.stage || "See the printer screen"; v.say2 = "Tell staff";
+        break;
+      case "offline":
+        v.chip = "Offline"; v.big = "Offline"; v.word = true; v.say = "Not connected"; v.say2 = "";
+        break;
+      case "free":
+        v.chip = "Free"; v.big = "Free"; v.word = true;
+        v.say = v.afterDone ? "Check the plate first" : "Ready to print"; v.say2 = "";
+        break;
+      default:
+        v.cls = "unknown"; v.chip = "No status"; v.big = "—"; v.word = true; v.say = "Waiting for status";
+    }
+    return v;
+  }
+
+  function card(p, now) {
+    var v = view(p, now);
+    var c = el("article", "card s-" + v.cls);
+    var r1 = el("div", "row1"); r1.appendChild(el("span", "chip", v.chip));
+    var fil = (p.filaments || []).slice(0, 5);
+    if (fil.length) {
+      var f = el("div", "fil");
+      fil.forEach(function (x) { var d = el("i", x.active ? "on" : ""); d.style.setProperty("--c", x.color || "#d8dcd9"); d.title = x.type || ""; f.appendChild(d); });
+      r1.appendChild(f);
+    } else if (p.model && p.model.toLowerCase() !== String(p.group || "").toLowerCase()) r1.appendChild(el("span", "model", p.model));
+    c.appendChild(r1);
+    c.appendChild(el("div", "name", p.name));
+    var big = el("div", "big" + (v.word ? " word" : ""), String(v.big));
+    if (!v.word && typeof v.big === "number") big.appendChild(el("small", null, "%"));
+    c.appendChild(big);
+    if (v.say) c.appendChild(el("div", "say", v.say));
+    if (v.say2) c.appendChild(el("div", "say2", v.say2));
+    if (v.bar != null) { var b = el("div", "bar"), i = el("i"); i.style.width = Math.max(2, Math.min(100, v.bar)) + "%"; b.appendChild(i); c.appendChild(b); }
+    return { node: c, cls: v.cls };
+  }
+
+  function render() {
+    var now = new Date();
+    $("clock").innerHTML = "";
+    var parts = fmtTime(now).split(" ");
+    $("clock").appendChild(document.createTextNode(parts[0])); if (parts[1]) $("clock").appendChild(el("small", null, parts[1]));
+    if (!data) return;
+
+    var updated = data.updated ? new Date(data.updated) : null;
+    var age = updated ? now - updated : Infinity;
+    var staleMs = (data.stale_after_s || 180) * 1000;
+    var stale = age > staleMs, dead = age > GIVE_UP_H * 3600000 || !data.printers.length;
+
+    document.body.classList.toggle("stale", stale && !dead);
+    document.body.classList.toggle("nodata", dead);
+    document.body.classList.toggle("live", !stale);
+    if (dead) {
+      $("emptyTitle").textContent = data.printers.length ? "Printer status is offline" : "Connecting…";
+      $("emptyText").textContent = updated && isFinite(age) ? "Last update " + updated.toLocaleDateString([], { month: "short", day: "numeric" }) + " at " + fmtTime(updated) + ". Check the printer screens for now." : "Printer status will show here in a moment.";
+      $("eyebrow").textContent = "3D Lab · 1403E";
+      $("status").textContent = ""; $("note").textContent = "";
+      return;
+    }
+
+    // groups: class levels first, then anything else
+    var groups = {};
+    data.printers.forEach(function (p) { (groups[p.group || p.model || "Printers"] = groups[p.group || p.model || "Printers"] || []).push(p); });
+    var names = Object.keys(groups).sort(function (a, b) {
+      var ia = LEVELS.indexOf(a), ib = LEVELS.indexOf(b);
+      return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || natural(a, b);
+    });
+    var portrait = window.matchMedia("(orientation: portrait)").matches;
+    var maxCols = Math.min(portrait ? 3 : 7, Math.max.apply(null, names.map(function (n) { return groups[n].length; })));
+    var main = $("groups"); main.innerHTML = "";
+    var counts = { free: 0, printing: 0, done: 0, attention: 0 };
+    names.forEach(function (n) {
+      var list = groups[n].sort(function (a, b) { return natural(a.name, b.name); });
+      var g = el("section", "group"), lab = el("div", "glabel"), cards = el("div", "cards");
+      var lines = Math.ceil(list.length / maxCols);
+      g.style.flex = lines + " 1 0";
+      cards.style.setProperty("--cols", maxCols);
+      var free = 0;
+      list.forEach(function (p) {
+        var c = card(p, now);
+        cards.appendChild(c.node);
+        if (c.cls === "free") free++;
+        if (c.cls === "printing" || c.cls === "preparing" || c.cls === "paused") counts.printing++;
+        if (c.cls === "done" || c.cls === "stopped") counts.done++;
+        if (c.cls === "attention") counts.attention++;
+      });
+      counts.free += free;
+      var models = []; list.forEach(function (p) { if (p.model && models.indexOf(p.model) < 0) models.push(p.model); });
+      lab.appendChild(el("b", null, n));
+      if (models.length && models.join(" · ").toLowerCase() !== n.toLowerCase()) lab.appendChild(el("span", null, models.join(" · ")));
+      lab.appendChild(el("em", free ? "" : "none", free ? free + " free" : "none free"));
+      g.appendChild(lab); g.appendChild(cards); main.appendChild(g);
+    });
+    $("nFree").textContent = counts.free; $("nPrinting").textContent = counts.printing;
+    $("nDone").textContent = counts.done; $("cDone").hidden = !counts.done;
+    $("nAtt").textContent = counts.attention; $("cAtt").hidden = !counts.attention;
+
+    $("eyebrow").textContent = stale ? "3D Lab · 1403E · Status paused" : "3D Lab · 1403E · Live";
+    var st = $("status"); st.innerHTML = "";
+    if (data.demo) st.appendChild(el("span", "pill demo", "Demo data"));
+    if (stale) { st.appendChild(el("span", "pill paused", "Not live")); st.appendChild(document.createTextNode("Last update " + fmtTime(updated) + ". Check the printer screen.")); }
+    else st.appendChild(document.createTextNode("Live from the printers · updated " + fmtTime(updated)));
+    $("note").textContent = (data.note || DEFAULT_NOTE);
+    fit();
+  }
+
+  // Shrink everything a little if any card spills over (more printers than the layout expects).
+  function fit() {
+    var root = document.documentElement, f = 1;
+    root.style.setProperty("--fit", 1);
+    for (var i = 0; i < 12; i++) {
+      var over = Array.prototype.some.call(document.querySelectorAll(".card"), function (c) { return c.scrollHeight > c.clientHeight + 1; })
+        || document.querySelector("main").scrollHeight > document.querySelector("main").clientHeight + 1;
+      if (!over) break;
+      f -= 0.05; root.style.setProperty("--fit", f);
+    }
+  }
+
+  function load() {
+    var url = SRC + (SRC.indexOf("?") < 0 ? "?" : "&") + "_=" + Date.now();
+    fetch(url, { cache: "no-store" }).then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(function (d) {
+        var n = normalize(d); if (!n) throw new Error("bad data");
+        data = n;
+        try { localStorage.setItem("ms-printers-last", JSON.stringify(n)); } catch (e) {}
+        render();
+      })
+      .catch(function () { if (!data && lastGood) data = lastGood; render(); });
+  }
+
+  if (lastGood) { data = lastGood; }
+  render(); load();
+  setInterval(load, POLL_MS);
+  setInterval(render, 15000);
+  window.addEventListener("resize", function () { render(); });
+})();
+</script>
+</body>
+</html>
