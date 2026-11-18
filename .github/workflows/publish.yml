@@ -4,6 +4,10 @@ name: Publish printer status
 # with the latest status as client_payload.status. This writes it to status.json
 # (keeping only screen-safe fields) and republishes GitHub Pages.
 # A push to main republishes the page and keeps the last live status.json.
+# Self-heal: GitHub Pages sometimes reports a deploy as done but keeps serving an old copy
+# (2026-11-17, 2026-11-18). Every dispatch deploy has the same name (the commit SHA), and a
+# new commit clears it. So after each deploy this checks the live status.json, and if it is
+# not the one just built, it commits a new time to .pages-nudge (at most once per 30 min).
 
 on:
   repository_dispatch:
@@ -13,7 +17,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write   # the self-heal step commits .pages-nudge
   pages: write
   id-token: write
 
@@ -54,3 +58,29 @@ jobs:
           retention-days: 1
 
       - uses: actions/deploy-pages@v4
+
+      - name: Check that the live page changed (self-heal)
+        if: github.event_name == 'repository_dispatch'
+        env:
+          PAGES_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/status.json
+        run: |
+          for i in 1 2 3 4 5 6; do
+            sleep 10
+            if curl -fsSL "$PAGES_URL?_=$(date +%s)" -o live.json && cmp -s live.json _site/status.json; then
+              echo "Live page matches this deploy."
+              exit 0
+            fi
+          done
+          echo "::warning::GitHub Pages did not serve this deploy after 60 s."
+          age=$(( $(date +%s) - $(git log -1 --format=%ct) ))
+          if [ "$age" -lt 1800 ]; then
+            echo "Last commit was $age s ago. No new nudge yet."
+            exit 0
+          fi
+          date -u +%Y-%m-%dT%H:%M:%SZ > .pages-nudge
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .pages-nudge
+          git commit -m "Nudge a stuck Pages deployment"
+          git push
+          echo "Committed .pages-nudge. The next update deploys under a new name."

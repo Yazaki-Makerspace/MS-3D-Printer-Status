@@ -25,3 +25,4 @@ Printer name, model, class level, state, percent, minutes left, layers, a stage 
 - The collector's GitHub token expires. GitHub emails this account before it does. Make a new fine-grained token for this repo only (Contents: Read and write, Workflows: Read and write) and save it on the Surface with `python3 ~/makerspace-printers/login.py --github-token`.
 - The collector's code and notes live with the Makerspace staff files (`1 Active/3D Lab Printer Status/`).
 - If the page stops changing or deploys fail while the collector still sends (2026-11-17): push any small commit to `main`. Each Pages deployment is named after the commit, and a new commit gives it a new name.
+- Since 2026-11-18 the publish workflow does this by itself: after each deploy it checks the live `status.json`, and if the page did not change it commits a new time to `.pages-nudge` (at most once per 30 minutes).
